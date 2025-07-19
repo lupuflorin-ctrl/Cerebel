@@ -1,0 +1,240 @@
+#include<Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// LCD pin setup
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+// Touch sensor pins
+const int touchF = 47;  // Frontal
+const int touchO = 49;  // Occipital
+const int touchT = 43;  // Temporal
+const int touchP = A0;  // Parietal
+
+// Pini Butoane
+//const int buton1 = 
+//const int buton2 =
+//const int buton3 =
+
+// Hemisphere sensors
+const int SensLHemisphere = A1;
+const int SensRHemisphere = 10;
+
+// Lobe LED pairs
+const int ledFL = 46, ledFR = 53; // Frontal led
+const int ledOL = 51, ledOR = 45; // Occipital led
+const int ledTL = 50, ledTR = 48; // Temporal led
+const int ledPL = 44, ledPR = 52; // Parietal led
+
+// Button debounce state
+bool prevF = false, prevO = false, prevT = false, prevHL = false, prevHR = false, prevP = false;
+
+// Blink timing
+const int blinkDelay = 250;
+
+int confirm = 0;
+int inapoi = 0;
+int inainte = 0;
+int meniu = 0;
+int lg;
+
+void setup() {
+  // LCD setup
+  lcd.init();
+  lcd.backlight();
+  int i = 0;
+  while(i < 3){
+  lcd.print("Brain Init...");
+  delay(400);
+  i++;
+  lcd.clear();
+  }
+  //pinMode(buton1, INPUT);
+  //pinMode(buton2, INPUT);
+  //pinMode(buton3, INPUT);
+
+  // Touch sensor inputs
+  pinMode(touchF, INPUT);
+  pinMode(touchO, INPUT);
+  pinMode(touchT, INPUT);
+  pinMode(touchP, INPUT);
+  pinMode(SensLHemisphere, INPUT);
+  pinMode(SensRHemisphere, INPUT);
+
+  // LED output pins
+  int ledPins[] = {
+    ledFL, ledFR, ledOL, ledOR,
+    ledTL, ledTR, ledPL, ledPR
+  };
+
+  for (int i = 0; i < sizeof(ledPins) / sizeof(ledPins[0]); i++) {
+    pinMode(ledPins[i], OUTPUT);
+    digitalWrite(ledPins[i], HIGH); // HIGH = OFF for TIP32C
+  }
+  //Selectarea limbii
+  lcd.setCursor(4, 1);
+  lcd.print("ENG");
+  lcd.setCursor(15, 1);
+  lcd.print("RO");
+  lcd.setCursor(0, 3);
+  lcd.print("←        ✔         →");
+  while(contirm = 0);
+  inapoi = digitalRead(buton1);
+  inainte = digitalRead(buton2);
+  confirm = digitalRead(buton3);
+  if(inapoi == 1){
+    lg=0;
+    for(int i=0,i<5,i++){
+      lcd.setCursor(4, 1);
+      lcd.print("   ");
+      delay(300);
+      lcd.setCursor(4, 1);
+      lcd.print("ENG");
+    }
+  }
+  if(inainte == 1){
+    lg=1;
+    for(int i=0,i<5,i++){
+      lcd.setCursor(15, 1);
+      lcd.print("  ");
+      delay(300);
+      lcd.setCursor(15, 1);
+      lcd.print("RO");
+    }
+  }
+  lcd.clear();
+}
+
+void loop(){
+  int score;
+  inapoi = digitalRead(buton1);
+  inainte = digitalRead(buton2);
+
+  if(inapoi == 1 and meniu > 0){
+    meniu = meniu - 1;
+  }
+
+  if(inainte == 1 and meniu < 3){
+    meniu = meniu + 1;
+  }
+
+  
+  if(meniu == 0){
+    confirm = digitalRead(buton3);
+    lcd.setCursor(6,1);
+    if(lg == 0){
+      lcd.print("Easy Test");
+    }
+
+    if(lg == 1){
+      lcd.print("Test Usor");
+    }
+    lcd.setCursor(0,3);
+    lcd.print("         ✔         →");
+    if(confirm == 1){
+      TestEZ(&score);
+    }
+  }
+
+  if(meniu == 1){
+    confirm = digitalRead(buton3);
+    lcd.setCursor(6,1);
+    if(lg == 0){
+      lcd.print("Hard Test");
+    }
+
+    if(lg == 1){
+      lcd.print("Test Greu");
+    }
+    lcd.setCursor(0,3);
+    lcd.print("←        ✔         →");
+    if(confirm == 1){
+      Test(&score);
+    }
+  }
+
+  if(meniu == 2){
+    confirm = digitalRead(buton3);
+    lcd.setCursor(7,1);
+    if(lg == 0){
+      lcd.print("Learning");
+    }
+
+    if(lg == 1){
+      lcd.print("Invatare");
+    }
+    lcd.setCursor(0,3);
+    lcd.print("←        ✔          ");
+    if(confirm == 1){
+      practice();
+    }
+  }
+}
+
+void TestEZ(int* score){
+
+}
+
+void Test(int* score){
+  lcd.setCursor(1,6);
+  lcd.print("Coming soon");
+}
+
+
+void practice() {
+  while(confirm = 0){
+  confirm = digitalRead(buton3);
+  handleTouch(touchF, "Frontal", ledFL, ledFR, &prevF);
+  handleTouch(touchO, "Occipital", ledOL, ledOR, &prevO);
+  handleTouch(touchT, "Temporal", ledTL, ledTR, &prevT);
+  handleTouch(touchP, "Parietal", ledPL, ledPR, &prevP);
+  handleTouchHem(SensLHemisphere, "Left Hem", ledPL, ledTL, ledOL, ledFL, &prevHL);
+  handleTouchHem(SensRHemisphere, "Right Hem", ledPR, ledTR, ledOR, ledFR, &prevHR);
+  }
+  loop();
+}
+
+void handleTouch(int pin, const char* name, int ledL, int ledR, bool* prevState) {
+  bool current = digitalRead(pin);
+
+  if (current && !(*prevState)) {
+    lcd.clear();
+    lcd.print(name);
+    blinkLED(ledL, ledR);
+  }
+
+  *prevState = current;
+}
+void blinkLED(int pin1, int pin2) {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(pin1, LOW); digitalWrite(pin2, LOW); // ON
+    delay(blinkDelay);
+    digitalWrite(pin1, HIGH); digitalWrite(pin2, HIGH); // OFF
+    delay(blinkDelay);
+  }
+}
+
+void handleTouchHem(int pin, const char* name, int led1, int led2, int led3, int led4, bool* prevState) {
+  bool current = digitalRead(pin);
+
+  if (current) {
+    lcd.clear();
+    lcd.print(name);
+    blinkLEDHem(led1, led2, led3, led4);
+  }
+
+  *prevState = current;
+}
+void blinkLEDHem(int pin1, int pin2, int pin3, int pin4) {
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(pin1, LOW);
+    digitalWrite(pin2, LOW);
+    digitalWrite(pin3, LOW);
+    digitalWrite(pin4, LOW); // ON
+      delay(blinkDelay);
+    digitalWrite(pin1, HIGH);
+    digitalWrite(pin2, HIGH);
+    digitalWrite(pin3, HIGH);
+    digitalWrite(pin4, HIGH); // OFF
+      delay(blinkDelay);
+  }
+}
